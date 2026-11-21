@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forex Risk Vault</title>
+  <style>
+    :root {
+      --bg: #07090e;
+      --surface: rgba(18, 22, 32, 0.9);
+      --surface-2: #0d1018;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
+      --muted: #64748b;
+      --gold: #eab308;
+      --gold-soft: rgba(234, 179, 8, 0.14);
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif; }
+    body { background: radial-gradient(circle at top, #151b2b 0%, var(--bg) 55%); color: var(--text); min-height: 100vh; padding: 18px 16px 40px; }
+
+    /* 2.5s Loading Screen */
+    .splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: radial-gradient(circle at top, #161d30 0%, #05070c 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 24px;
+      cursor: default;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    .splash.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .splash-logo {
+      width: 74px;
+      height: 74px;
+      border-radius: 22px;
+      background: linear-gradient(155deg, rgba(234, 179, 8, 0.16), rgba(13, 16, 24, 0.96));
+      border: 1px solid rgba(234, 179, 8, 0.38);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6), 0 0 26px rgba(234, 179, 8, 0.12);
+    }
+    .splash-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .splash-title span { color: var(--gold); }
+    .splash-sub {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .loader-track {
+      width: 140px;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .loader-bar {
+      width: 45%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--gold), #facc15);
+      animation: loadSweep 0.95s ease-in-out infinite;
+    }
+    @keyframes loadSweep {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(320%); }
+    }
+
+    .app { max-width: 440px; margin: 0 auto; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .brand-wrap { display: flex; align-items: center; gap: 9px; }
+    .app-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.32);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand { font-size: 13px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; }
+    .brand span { color: var(--gold); }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .pill-tag { font-size: 11px; font-weight: 600; color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+    .chart-toggle-btn { font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.35); padding: 5px 11px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+    .chart-toggle-btn.open { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
+    .hero { background: linear-gradient(165deg, rgba(26,32,46,0.95) 0%, rgba(11,14,22,0.98) 100%); border: 1px solid rgba(234,179,8,0.25); border-radius: 22px; padding: 20px 16px; text-align: center; margin-bottom: 14px; }
+    .hero-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; }
+    .lot-display { font-size: 44px; font-weight: 800; letter-spacing: -1.5px; color: var(--gold); margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+    .risk-sub { font-size: 13px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 15px; margin-bottom: 14px; }
+    .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); font-weight: 700; }
+    .save-status { font-size: 10px; font-weight: 700; color: #22c55e; letter-spacing: 0.4px; }
+    .pair-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .pair-btn { background: var(--surface-2); border: 1px solid var(--border); color: #94a3b8; padding: 10px 6px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .pair-btn.active { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field.full { grid-column: span 2; }
+    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+    input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 11px 12px; border-radius: 12px; font-size: 15px; font-weight: 600; outline: none; font-variant-numeric: tabular-nums; }
+    input:focus { border-color: var(--gold); }
+    .preset-row { display: flex; gap: 6px; margin-top: 7px; }
+    .chip { flex: 1; background: var(--surface-2); border: 1px solid var(--border); color: #94a3b8; padding: 7px 0; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(56,189,248,0.1); }
+    .sl-guide {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(13, 16, 24, 0.85);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+    .sl-guide strong { color: #e2e8f0; }
+    #chartPanel { display: none; }
+    .chart-box { height: 360px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); }
+    .chart-fallback { padding: 20px; font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="splash" id="splashScreen">
+    <div class="splash-logo">
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M20 4L33 10V21C33 29.8 27.5 35.4 20 37C12.5 35.4 7 29.8 7 21V10L20 4Z" stroke="#eab308" stroke-width="2.2" fill="rgba(234, 179, 8, 0.08)"/>
+        <circle cx="20" cy="20.5" r="7.5" stroke="#f8fafc" stroke-width="1.8"/>
+        <circle cx="20" cy="20.5" r="2.2" fill="#eab308"/>
+        <line x1="20" y1="13" x2="20" y2="16" stroke="#eab308" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="20" y1="25" x2="20" y2="28" stroke="#eab308" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="12.5" y1="20.5" x2="15.5" y2="20.5" stroke="#eab308" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="24.5" y1="20.5" x2="27.5" y2="20.5" stroke="#eab308" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="splash-title">FOREX RISK <span>VAULT</span></div>
+    <div class="splash-sub">Position &amp; Risk Terminal</div>
+    <div class="loader-track">
+      <div class="loader-bar"></div>
+    </div>
+  </div>
+
+  <div class="app">
+    <div class="top-bar">
+      <div class="brand-wrap">
+        <div class="app-mark">
+          <svg width="16" height="16" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <path d="M20 4L33 10V21C33 29.8 27.5 35.4 20 37C12.5 35.4 7 29.8 7 21V10L20 4Z" stroke="#eab308" stroke-width="2.8"/>
+            <circle cx="20" cy="20.5" r="6.5" stroke="#f8fafc" stroke-width="2.4"/>
+            <circle cx="20" cy="20.5" r="2.5" fill="#eab308"/>
+          </svg>
+        </div>
+        <div class="brand">FOREX RISK <span>VAULT</span></div>
+      </div>
+      <div class="top-actions">
+        <div class="pill-tag" id="modeTag">GOLD · $100/LOT</div>
+        <button type="button" class="chart-toggle-btn" id="chartToggleBtn" onclick="toggleChart()">Chart</button>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-label">Position Size</div>
+      <div class="lot-display" id="lotOut">0.03</div>
+      <div class="risk-sub" id="riskOut">$10.00 risk budget · $3.00 move</div>
+    </div>
+
+    <div class="panel">
+      <div class="section-row">
+        <div class="section-title">Instrument</div>
+        <div class="save-status" id="saveStatus">AUTO-SAVE ON</div>
+      </div>
+      <div class="pair-grid">
+        <button type="button" class="pair-btn active" data-pair="XAUUSD">XAU/USD</button>
+        <button type="button" class="pair-btn" data-pair="EURUSD">EUR/USD</button>
+        <button type="button" class="pair-btn" data-pair="GBPUSD">GBP/USD</button>
+        <button type="button" class="pair-btn" data-pair="USDJPY">USD/JPY</button>
+        <button type="button" class="pair-btn" data-pair="GBPJPY">GBP/JPY</button>
+      </div>
+
+      <div class="fields">
+        <div class="field">
+          <label>BALANCE (USD)</label>
+          <input type="number" id="balance" value="1000" step="any" />
+        </div>
+        <div class="field">
+          <label>RISK (%)</label>
+          <input type="number" id="riskPct" value="1" step="0.25" />
+          <div class="preset-row" id="riskPresets">
+            <button type="button" class="chip" data-r="0.5">0.5%</button>
+            <button type="button" class="chip active" data-r="1">1%</button>
+            <button type="button" class="chip" data-r="2">2%</button>
+          </div>
+        </div>
+        <div class="field full">
+          <label id="slLabel">GOLD STOP LOSS ($ MOVE)</label>
+          <input type="number" id="slVal" value="3" step="0.1" />
+          <div class="preset-row" id="slPresets"></div>
+          <div class="sl-guide" id="slGuide"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="chartPanel">
+      <div class="section-row">
+        <div class="section-title" style="margin-bottom:0;" id="chartTitle">OANDA:XAUUSD</div>
+        <button type="button" class="chip" style="flex:none;padding:4px 10px;" onclick="renderTvChart()">Reload</button>
+      </div>
+      <div class="chart-box" id="tvContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    setTimeout(() => {
+      const s = document.getElementById("splashScreen");
+      if (s) s.classList.add("hide");
+    }, 2500);
+  </script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <script>
+    const STORAGE_KEY = "frv_settings_v1";
+    const specs = {
+      XAUUSD: {
+        tv: "OANDA:XAUUSD",
+        label: "GOLD STOP LOSS ($ MOVE)",
+        tag: "GOLD · $100/LOT",
+        perLot: 100,
+        defSl: 3,
+        presets: [1, 2, 3, 5],
+        unit: " move",
+        slDec: 2,
+        guide: "<strong>Gold ($ Move):</strong> 1.00 lot = ~$100 per $1.00 price move (e.g. 3540.00 → 3537.00 is a $3.00 SL)."
+      },
+      EURUSD: {
+        tv: "OANDA:EURUSD",
+        label: "STOP LOSS (PIPS)",
+        tag: "FX · $10/PIP",
+        perLot: 10,
+        defSl: 20,
+        presets: [10, 15, 20, 30],
+        unit: " pips",
+        slDec: 1,
+        guide: "<strong>Forex Pips:</strong> 1 pip = 0.0001 (e.g. 1.0845 → 1.0865 is 20 pips). 1.00 lot ≈ $10/pip; 20 pips = 200 points."
+      },
+      GBPUSD: {
+        tv: "OANDA:GBPUSD",
+        label: "STOP LOSS (PIPS)",
+        tag: "FX · $10/PIP",
+        perLot: 10,
+        defSl: 20,
+        presets: [10, 15, 20, 30],
+        unit: " pips",
+        slDec: 1,
+        guide: "<strong>Forex Pips:</strong> 1 pip = 0.0001 (e.g. 1.2710 → 1.2730 is 20 pips). 1.00 lot ≈ $10/pip; 20 pips = 200 points."
+      },
+      USDJPY: {
+        tv: "OANDA:USDJPY",
+        label: "STOP LOSS (PIPS)",
+        tag: "JPY · ~$6.5/PIP",
+        perLot: 6.5,
+        defSl: 20,
+        presets: [10, 15, 20, 30],
+        unit: " pips",
+        slDec: 1,
+        guide: "<strong>JPY Pips:</strong> 1 pip = 0.01 (e.g. 154.25 → 154.45 is 20 pips). 1.00 lot ≈ $6.50/pip; 20 pips = 200 points."
+      },
+      GBPJPY: {
+        tv: "OANDA:GBPJPY",
+        label: "STOP LOSS (PIPS)",
+        tag: "JPY · ~$6.5/PIP",
+        perLot: 6.5,
+        defSl: 25,
+        presets: [15, 25, 35, 50],
+        unit: " pips",
+        slDec: 1,
+        guide: "<strong>JPY Cross Pips:</strong> 1 pip = 0.01 (e.g. 196.10 → 196.35 is 25 pips). Uses ~$6.50/pip estimate; verify exact pip value in MT5."
+      }
+    };
+
+    let pair = "XAUUSD";
+    let isOpen = false;
+
+    const balEl = document.getElementById("balance");
+    const riskEl = document.getElementById("riskPct");
+    const slEl = document.getElementById("slVal");
+    const slPresetsEl = document.getElementById("slPresets");
+    const slGuideEl = document.getElementById("slGuide");
+    const panelEl = document.getElementById("chartPanel");
+    const btnEl = document.getElementById("chartToggleBtn");
+    const tvBox = document.getElementById("tvContainer");
+
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ pair, bal: balEl.value, risk: riskEl.value, sl: slEl.value }));
+      } catch (e) {}
+    }
+
+    function load() {
+      try {
+        const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (!d) return;
+        if (d.pair && specs[d.pair]) pair = d.pair;
+        if (d.bal !== undefined) balEl.value = d.bal;
+        if (d.risk !== undefined) riskEl.value = d.risk;
+        if (d.sl !== undefined) slEl.value = d.sl;
+      } catch (e) {}
+    }
+
+    function renderTvChart() {
+      const s = specs[pair];
+      document.getElementById("chartTitle").innerText = s.tv;
+      tvBox.innerHTML = "";
+
+      if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
+        tvBox.innerHTML = `<div class="chart-fallback">TradingView script didn't load in OneCompiler's preview sandbox.</div>`;
+        return;
+      }
+
+      const id = "tv_box_" + Date.now();
+      const target = document.createElement("div");
+      target.id = id;
+      target.style.width = "100%";
+      target.style.height = "100%";
+      tvBox.appendChild(target);
+
+      try {
+        new TradingView.widget({
+          autosize: true,
+          symbol: s.tv,
+          interval: "15",
+          timezone: "Asia/Kuala_Lumpur",
+          theme: "dark",
+          style: "1",
+          locale: "en",
+          enable_publishing: false,
+          hide_top_toolbar: false,
+          allow_symbol_change: false,
+          container_id: id
+        });
+      } catch (e) {
+        tvBox.innerHTML = `<div class="chart-fallback">Unable to start TradingView widget here.</div>`;
+      }
+    }
+
+    function toggleChart() {
+      isOpen = !isOpen;
+      panelEl.style.display = isOpen ? "block" : "none";
+      btnEl.classList.toggle("open", isOpen);
+      btnEl.innerText = isOpen ? "Hide Chart" : "Chart";
+      if (isOpen) setTimeout(renderTvChart, 30);
+    }
+
+    function renderPresets() {
+      const s = specs[pair];
+      slPresetsEl.innerHTML = "";
+      s.presets.forEach(val => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip" + (Number(slEl.value) === val ? " active" : "");
+        b.innerText = pair === "XAUUSD" ? "$" + val : val + "p";
+        b.onclick = () => { slEl.value = val; renderPresets(); calc(); save(); };
+        slPresetsEl.appendChild(b);
+      });
+    }
+
+    function syncRisk() {
+      document.querySelectorAll("#riskPresets .chip").forEach(c => {
+        c.classList.toggle("active", Number(c.dataset.r) === Number(riskEl.value));
+      });
+    }
+
+    function applyPair(resetSl) {
+      const s = specs[pair];
+      document.querySelectorAll(".pair-btn").forEach(b => b.classList.toggle("active", b.dataset.pair === pair));
+      document.getElementById("slLabel").innerText = s.label;
+      document.getElementById("modeTag").innerText = s.tag;
+      slGuideEl.innerHTML = s.guide;
+      if (resetSl) slEl.value = s.defSl;
+      renderPresets();
+      syncRisk();
+    }
+
+    function calc() {
+      const bal = Math.max(0, parseFloat(balEl.value) || 0);
+      const r = Math.max(0, parseFloat(riskEl.value) || 0);
+      const sl = Math.max(0.01, parseFloat(slEl.value) || 0.01);
+      const s = specs[pair];
+      const riskAmt = bal * (r / 100);
+      const lots = Math.floor((riskAmt / (sl * s.perLot)) * 100) / 100;
+      document.getElementById("lotOut").innerText = (lots > 0 ? lots : 0).toFixed(2);
+      document.getElementById("riskOut").innerText = `$${riskAmt.toFixed(2)} risk budget · $${sl.toFixed(s.slDec)}${s.unit}`;
+    }
+
+    document.querySelectorAll(".pair-btn").forEach(b => {
+      b.onclick = () => {
+        pair = b.dataset.pair;
+        applyPair(true);
+        calc();
+        save();
+        if (isOpen) renderTvChart();
+      };
+    });
+
+    document.querySelectorAll("#riskPresets .chip").forEach(c => {
+      c.onclick = () => { riskEl.value = c.dataset.r; syncRisk(); calc(); save(); };
+    });
+
+    [balEl, riskEl, slEl].forEach(el => {
+      el.oninput = () => {
+        if (el === slEl) renderPresets();
+        if (el === riskEl) syncRisk();
+        calc();
+        save();
+      };
+    });
+
+    load();
+    applyPair(false);
+    calc();
+  </script>
+</body>
+  </html>
